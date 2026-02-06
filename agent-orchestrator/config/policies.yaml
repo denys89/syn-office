@@ -1,0 +1,79 @@
+# Model Selection Policies
+
+policies:
+  # Prefer local models when capability threshold is met
+  prefer_local: true
+  local_capability_threshold: 6
+  
+  # Cost controls
+  max_cost_per_request: high  # low, medium, high
+  
+  # Fallback behavior
+  fallback_enabled: true
+  max_retries: 2
+  
+  # Scoring weights (must sum to 1.0)
+  weights:
+    capability_match: 0.40
+    speed: 0.20
+    cost_efficiency: 0.30
+    reliability: 0.10
+
+# Provider priority order (used when scores are equal)
+provider_priority:
+  - ollama      # Local first (free, private)
+  - groq        # Fast and cheap
+  - openai      # Reliable
+  - anthropic   # High quality
+
+# Restricted tasks - route sensitive content to local models only
+restricted_patterns:
+  - pattern: "confidential|secret|private|password|credential"
+    allowed_providers: 
+      - ollama
+    reason: "Sensitive data should stay local"
+    
+  - pattern: "internal|proprietary|trade.?secret"
+    allowed_providers:
+      - ollama
+    reason: "Proprietary information protection"
+
+# Agent role to capability mapping
+role_capabilities:
+  Engineer:
+    required:
+      - coding
+      - reasoning
+    preferred:
+      - structured_output
+    min_score: 7
+    
+  Analyst:
+    required:
+      - reasoning
+      - summarization
+    preferred:
+      - long_context
+    min_score: 6
+    
+  Writer:
+    required:
+      - summarization
+    preferred:
+      - long_context
+    min_score: 5
+    
+  Planner:
+    required:
+      - planning
+      - reasoning
+    preferred:
+      - structured_output
+    min_score: 6
+
+# Cost level definitions (for budget tracking)
+cost_levels:
+  free: 0.0
+  low: 0.001      # ~$0.001 per 1K tokens
+  medium: 0.01    # ~$0.01 per 1K tokens
+  high: 0.03      # ~$0.03 per 1K tokens

@@ -1,3 +1,9 @@
+"""
+Main orchestrator for agent task execution.
+
+Enhanced with Model Capability & Selection Engine for dynamic multi-model routing.
+"""
+
 import logging
 from typing import Optional
 import httpx
@@ -5,7 +11,8 @@ import httpx
 from config import get_settings
 from models import ExecuteRequest, ExecuteResponse, TaskStatus, AgentContext
 from database import get_database
-from llm_client import get_llm_client
+from model_selection import get_model_selector, ModelSelector
+from metrics import get_metrics_service, MetricsService
 
 logger = logging.getLogger(__name__)
 
@@ -34,22 +41,51 @@ async def _get_qdrant():
 
 
 class Orchestrator:
-    """Main orchestrator for agent task execution."""
+    """
+    Main orchestrator for agent task execution.
+    
+    Enhanced with Model Capability & Selection Engine for:
+    - Dynamic model selection based on task requirements
+    - Multi-provider support (OpenAI, Anthropic, Groq, Ollama)
+    - Automatic fallback on failures
+    - Execution metrics persistence
+    """
     
     def __init__(self):
         self.db = get_database()
-        self.llm = get_llm_client()
         self.settings = get_settings()
+        self.model_selector: ModelSelector = get_model_selector()
+        self.metrics: MetricsService = get_metrics_service()
+        self._initialized = False
+    
+    async def initialize(self) -> None:
+        """Initialize the orchestrator and its dependencies."""
+        if self._initialized:
+            return
+        
+        # Initialize model selector
+        await self.model_selector.initialize()
+        
+        # Initialize metrics with database pool
+        if self.db.pool:
+            await self.metrics.initialize(self.db.pool)
+        
+        self._initialized = True
+        logger.info("Orchestrator initialized with model selection engine")
     
     async def execute_task(self, request: ExecuteRequest) -> ExecuteResponse:
         """
         Execute a task by:
         1. Loading agent context (with semantic memory search)
-        2. Generating LLM response
-        3. Saving response and updating task
-        4. Optionally extracting and saving memories
+        2. Selecting optimal model based on task requirements
+        3. Generating LLM response with fallback support
+        4. Saving response and updating task
+        5. Persisting execution metrics
         """
         try:
+            # Ensure initialized
+            await self.initialize()
+            
             # Update status to thinking
             await self.db.update_task_status(request.task_id, TaskStatus.THINKING.value)
             
@@ -65,8 +101,19 @@ class Orchestrator:
             # Update status to working
             await self.db.update_task_status(request.task_id, TaskStatus.WORKING.value)
             
-            # Generate response
-            output, token_usage = await self.llm.generate(context, request.input)
+            # Select optimal model for this task
+            selected = await self.model_selector.select_model(request, context)
+            logger.info(
+                f"Selected model: {selected.model_name} ({selected.provider}) "
+                f"for agent {context.agent_role} | Score: {selected.score:.2f}"
+            )
+            
+            # Generate response with fallback support
+            output, token_usage, metrics = await self.model_selector.execute_with_fallback(
+                selected=selected,
+                context=context,
+                user_input=request.input,
+            )
             
             # Update task with output
             await self.db.update_task_status(
@@ -80,6 +127,10 @@ class Orchestrator:
             
             # Broadcast to WebSocket (via backend)
             await self._notify_backend(request, output)
+            
+            # Persist execution metrics
+            metrics.task_id = request.task_id
+            await self.metrics.save(metrics)
             
             return ExecuteResponse(
                 task_id=request.task_id,
@@ -174,7 +225,7 @@ class Orchestrator:
         """Notify the backend about the completed task (for WebSocket broadcast)."""
         try:
             api_key = self.settings.internal_api_key
-            logger.info(f"Notifying backend with API key: {api_key[:10]}... (length: {len(api_key)})")
+            logger.debug(f"Notifying backend with API key: {api_key[:10]}...")
             
             async with httpx.AsyncClient() as client:
                 response = await client.post(
@@ -190,9 +241,8 @@ class Orchestrator:
                     },
                     timeout=5.0,
                 )
-                logger.info(f"Backend response status: {response.status_code}")
                 if response.status_code != 200:
-                    logger.error(f"Backend response: {response.text}")
+                    logger.warning(f"Backend notification failed: {response.status_code}")
         except Exception as e:
             # Log but don't fail - message is already saved
             logger.warning(f"Failed to notify backend: {e}")
@@ -208,4 +258,3 @@ def get_orchestrator() -> Orchestrator:
     if _orchestrator is None:
         _orchestrator = Orchestrator()
     return _orchestrator
-

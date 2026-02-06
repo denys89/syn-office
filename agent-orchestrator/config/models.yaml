@@ -1,0 +1,153 @@
+models:
+  # === OpenAI Models ===
+  - name: gpt-4-turbo
+    provider: openai
+    cost_level: high
+    latency: medium
+    max_tokens: 128000
+    available: true
+    capabilities:
+      reasoning: 9
+      coding: 9
+      long_context: 9
+      summarization: 8
+      planning: 8
+      structured_output: 8
+      
+  - name: gpt-4o
+    provider: openai
+    cost_level: high
+    latency: fast
+    max_tokens: 128000
+    available: true
+    capabilities:
+      reasoning: 9
+      coding: 9
+      long_context: 9
+      summarization: 9
+      planning: 8
+      multimodal: 9
+      structured_output: 9
+
+  - name: gpt-3.5-turbo
+    provider: openai
+    cost_level: low
+    latency: fast
+    max_tokens: 16000
+    available: true
+    capabilities:
+      reasoning: 6
+      coding: 6
+      summarization: 7
+      speed: 9
+      structured_output: 7
+
+  # === Anthropic Models ===
+  - name: claude-3-5-sonnet-20241022
+    provider: anthropic
+    cost_level: high
+    latency: medium
+    max_tokens: 200000
+    available: true
+    capabilities:
+      reasoning: 10
+      coding: 10
+      long_context: 10
+      summarization: 9
+      planning: 9
+      structured_output: 9
+
+  - name: claude-3-haiku-20240307
+    provider: anthropic
+    cost_level: low
+    latency: fast
+    max_tokens: 200000
+    available: true
+    capabilities:
+      reasoning: 7
+      coding: 7
+      summarization: 8
+      speed: 9
+      structured_output: 8
+
+  # === Groq Models (Fast Inference) ===
+  - name: llama-3.3-70b-versatile
+    provider: groq
+    cost_level: low
+    latency: fast
+    max_tokens: 32000
+    available: true
+    capabilities:
+      reasoning: 8
+      coding: 8
+      summarization: 8
+      speed: 10
+      structured_output: 7
+
+  - name: mixtral-8x7b-32768
+    provider: groq
+    cost_level: low
+    latency: fast
+    max_tokens: 32768
+    available: true
+    capabilities:
+      reasoning: 7
+      coding: 7
+      summarization: 7
+      speed: 10
+
+  # === Ollama Local Models ===
+  - name: llama3:8b
+    provider: ollama
+    cost_level: free
+    latency: medium
+    max_tokens: 8000
+    available: true
+    capabilities:
+      reasoning: 6
+      coding: 6
+      summarization: 6
+      speed: 8
+
+  - name: llama3:70b
+    provider: ollama
+    cost_level: free
+    latency: slow
+    max_tokens: 8000
+    available: true
+    capabilities:
+      reasoning: 8
+      coding: 8
+      summarization: 8
+      speed: 4
+
+  - name: codellama:13b
+    provider: ollama
+    cost_level: free
+    latency: medium
+    max_tokens: 16000
+    available: true
+    capabilities:
+      reasoning: 5
+      coding: 8
+      summarization: 5
+      speed: 7
+
+  - name: mistral:7b
+    provider: ollama
+    cost_level: free
+    latency: fast
+    max_tokens: 8000
+    available: true
+    capabilities:
+      reasoning: 6
+      coding: 6
+      summarization: 7
+      speed: 9
+
+# Default model fallback order by provider
+defaults:
+  openai: gpt-4-turbo
+  anthropic: claude-3-5-sonnet-20241022
+  groq: llama-3.3-70b-versatile
+  ollama: llama3:8b

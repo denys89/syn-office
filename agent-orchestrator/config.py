@@ -1,5 +1,6 @@
 from pydantic_settings import BaseSettings
 from functools import lru_cache
+from typing import Optional
 import logging
 
 logger = logging.getLogger(__name__)
@@ -9,8 +10,24 @@ class Settings(BaseSettings):
     """Application settings loaded from environment variables."""
     
     # OpenAI
-    openai_api_key: str
-    openai_model: str = "gpt-4-turbo-preview"
+    openai_api_key: str = ""
+    openai_model: str = "gpt-4-turbo"
+    
+    # Anthropic
+    anthropic_api_key: Optional[str] = None
+    
+    # Groq
+    groq_api_key: Optional[str] = None
+    
+    # Ollama (Local)
+    ollama_url: str = "http://localhost:11434"
+    ollama_enabled: bool = True
+    
+    # Model Selection
+    models_config_path: str = "config/models.yaml"
+    policies_config_path: str = "config/policies.yaml"
+    default_model: str = "gpt-4-turbo"
+    prefer_local_models: bool = True
     
     # Database
     database_url: str = "postgres://synoffice:synoffice_secret@localhost:5432/synoffice"
@@ -44,5 +61,5 @@ def get_settings() -> Settings:
     """Get cached settings instance."""
     settings = Settings()
     logger.info(f"Settings loaded - Backend URL: {settings.backend_url}")
-    logger.info(f"Settings loaded - Internal API Key: {settings.internal_api_key[:10]}... (length: {len(settings.internal_api_key)})")
+    logger.info(f"Model Selection - Default: {settings.default_model}, Prefer Local: {settings.prefer_local_models}")
     return settings
