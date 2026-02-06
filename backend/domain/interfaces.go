@@ -79,3 +79,37 @@ type AgentMemoryRepository interface {
 	Upsert(ctx context.Context, memory *AgentMemory) error
 	Delete(ctx context.Context, id uuid.UUID) error
 }
+
+// CreditRepository defines database operations for credit wallets and transactions
+type CreditRepository interface {
+	// Wallet operations
+	CreateWallet(ctx context.Context, officeID uuid.UUID, initialBalance int64) (*CreditWallet, error)
+	GetWalletByID(ctx context.Context, id uuid.UUID) (*CreditWallet, error)
+	GetWalletByOfficeID(ctx context.Context, officeID uuid.UUID) (*CreditWallet, error)
+	GetBalance(ctx context.Context, walletID uuid.UUID) (int64, error)
+	HasSufficientBalance(ctx context.Context, walletID uuid.UUID, requiredCredits int64) (bool, int64, error)
+
+	// Transaction operations
+	AddCredits(ctx context.Context, walletID uuid.UUID, amount int64, txType TransactionType, description string, refType string, refID *uuid.UUID) (*CreditTransaction, error)
+	ConsumeCredits(ctx context.Context, walletID uuid.UUID, amount int64, taskID uuid.UUID, description string) (*CreditTransaction, error)
+	GetTransactions(ctx context.Context, walletID uuid.UUID, limit int, offset int) ([]*CreditTransaction, error)
+	GetTransactionsByType(ctx context.Context, walletID uuid.UUID, txType TransactionType, limit int) ([]*CreditTransaction, error)
+}
+
+// SubscriptionRepository defines database operations for subscriptions
+type SubscriptionRepository interface {
+	// Subscription operations
+	Create(ctx context.Context, subscription *Subscription) error
+	GetByID(ctx context.Context, id uuid.UUID) (*Subscription, error)
+	GetByOfficeID(ctx context.Context, officeID uuid.UUID) (*Subscription, error)
+	GetByStripeID(ctx context.Context, stripeSubscriptionID string) (*Subscription, error)
+	Update(ctx context.Context, subscription *Subscription) error
+	UpdateStatus(ctx context.Context, id uuid.UUID, status SubscriptionStatus) error
+	UpdateTier(ctx context.Context, id uuid.UUID, tier SubscriptionTier) error
+
+	// Credit allocation operations
+	CreateAllocation(ctx context.Context, allocation *CreditAllocation) error
+	GetCurrentAllocation(ctx context.Context, subscriptionID uuid.UUID) (*CreditAllocation, error)
+	GetAllocationsBySubscription(ctx context.Context, subscriptionID uuid.UUID, limit int) ([]*CreditAllocation, error)
+	UpdateAllocationConsumed(ctx context.Context, allocationID uuid.UUID, consumed int64) error
+}

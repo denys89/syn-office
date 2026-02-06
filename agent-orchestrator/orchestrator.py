@@ -2,6 +2,7 @@
 Main orchestrator for agent task execution.
 
 Enhanced with Model Capability & Selection Engine for dynamic multi-model routing.
+Integrated with Credit System for monetization.
 """
 
 import logging
@@ -12,7 +13,14 @@ from config import get_settings
 from models import ExecuteRequest, ExecuteResponse, TaskStatus, AgentContext
 from database import get_database
 from model_selection import get_model_selector, ModelSelector
+from model_selection.types import CostLevel
 from metrics import get_metrics_service, MetricsService
+from credit_client import get_credit_client, CreditClient
+from cost_engine import get_cost_engine, CostEngine
+from rate_limiter import (
+    get_rate_limiter, get_anomaly_detector, get_circuit_breaker,
+    CreditRateLimiter, AnomalyDetector, CircuitBreaker, RateLimitAction
+)
 
 logger = logging.getLogger(__name__)
 
@@ -49,6 +57,11 @@ class Orchestrator:
     - Multi-provider support (OpenAI, Anthropic, Groq, Ollama)
     - Automatic fallback on failures
     - Execution metrics persistence
+    
+    Integrated with Credit System for:
+    - Pre-execution balance checks
+    - Credit consumption based on model usage
+    - Cost tracking and reporting
     """
     
     def __init__(self):
@@ -56,6 +69,11 @@ class Orchestrator:
         self.settings = get_settings()
         self.model_selector: ModelSelector = get_model_selector()
         self.metrics: MetricsService = get_metrics_service()
+        self.credit_client: CreditClient = get_credit_client()
+        self.cost_engine: CostEngine = get_cost_engine()
+        self.rate_limiter: CreditRateLimiter = get_rate_limiter()
+        self.anomaly_detector: AnomalyDetector = get_anomaly_detector()
+        self.circuit_breaker: CircuitBreaker = get_circuit_breaker()
         self._initialized = False
     
     async def initialize(self) -> None:
@@ -71,17 +89,22 @@ class Orchestrator:
             await self.metrics.initialize(self.db.pool)
         
         self._initialized = True
-        logger.info("Orchestrator initialized with model selection engine")
+        logger.info("Orchestrator initialized with model selection engine and credit system")
     
     async def execute_task(self, request: ExecuteRequest) -> ExecuteResponse:
         """
         Execute a task by:
         1. Loading agent context (with semantic memory search)
-        2. Selecting optimal model based on task requirements
-        3. Generating LLM response with fallback support
-        4. Saving response and updating task
-        5. Persisting execution metrics
+        2. Estimating and checking credit balance
+        3. Selecting optimal model based on task requirements
+        4. Generating LLM response with fallback support
+        5. Consuming credits based on actual usage
+        6. Saving response and updating task
+        7. Persisting execution metrics
         """
+        credits_consumed = 0
+        selected_model_name = ""
+        
         try:
             # Ensure initialized
             await self.initialize()
@@ -103,10 +126,111 @@ class Orchestrator:
             
             # Select optimal model for this task
             selected = await self.model_selector.select_model(request, context)
+            selected_model_name = selected.model_name
             logger.info(
                 f"Selected model: {selected.model_name} ({selected.provider}) "
                 f"for agent {context.agent_role} | Score: {selected.score:.2f}"
             )
+            
+            # Get model definition for pricing
+            model_def = self.model_selector.registry.get_model(selected.model_name)
+            
+            # Estimate credits needed using per-model pricing
+            if model_def:
+                estimated_credits = self.cost_engine.estimate_credits_for_model(model_def)
+                is_free_model = model_def.cost_level == CostLevel.FREE
+            else:
+                # Fallback to cost level
+                cost_level = self.cost_engine.get_cost_level_for_model(
+                    selected.model_name, selected.provider
+                )
+                estimated_credits = self.cost_engine.estimate_credits(cost_level)
+                is_free_model = cost_level == CostLevel.FREE
+            
+            # Log local model usage for optimization tracking
+            if is_free_model:
+                logger.info(f"Using FREE local model: {selected.model_name} (0 credits)")
+            
+            # Check if office has sufficient credits (skip for free models)
+            if not is_free_model:
+                credit_check = await self.credit_client.check_balance(
+                    request.office_id, estimated_credits
+                )
+                
+                if not credit_check.has_sufficient and not credit_check.error:
+                    logger.warning(
+                        f"Insufficient credits for task {request.task_id}: "
+                        f"has {credit_check.current_balance}, needs {estimated_credits}"
+                    )
+                    await self.db.update_task_status(
+                        request.task_id, 
+                        TaskStatus.FAILED.value, 
+                        error=f"Insufficient credits: {credit_check.current_balance} available, {estimated_credits} required"
+                    )
+                    return ExecuteResponse(
+                        task_id=request.task_id,
+                        status=TaskStatus.FAILED,
+                        error=f"Insufficient credits: {credit_check.current_balance} available, {estimated_credits} required",
+                    )
+                
+                # Rate limiting: Check hourly/daily budget limits
+                budget_result = await self.rate_limiter.check_budget(
+                    office_id=request.office_id,
+                    estimated_credits=estimated_credits,
+                    credits_remaining=credit_check.current_balance,
+                )
+                
+                if not budget_result.allowed:
+                    logger.warning(
+                        f"Rate limit blocked task {request.task_id}: {budget_result.reason}"
+                    )
+                    await self.db.update_task_status(
+                        request.task_id,
+                        TaskStatus.FAILED.value,
+                        error=f"Rate limit: {budget_result.reason}"
+                    )
+                    return ExecuteResponse(
+                        task_id=request.task_id,
+                        status=TaskStatus.FAILED,
+                        error=f"Rate limit exceeded: {budget_result.reason}",
+                    )
+                
+                if budget_result.action == RateLimitAction.WARN:
+                    logger.warning(f"Rate limit warning for {request.office_id}: {budget_result.reason}")
+                
+                # Anomaly detection: Check for excessive single-task cost
+                task_ok, anomaly_reason = await self.anomaly_detector.check_task_credits(
+                    request.office_id, estimated_credits
+                )
+                if not task_ok:
+                    logger.warning(f"Anomaly detected for task {request.task_id}: {anomaly_reason}")
+                    await self.db.update_task_status(
+                        request.task_id,
+                        TaskStatus.FAILED.value,
+                        error=anomaly_reason
+                    )
+                    return ExecuteResponse(
+                        task_id=request.task_id,
+                        status=TaskStatus.FAILED,
+                        error=anomaly_reason,
+                    )
+            
+            # Circuit breaker: Check if provider is available
+            provider_ok, cb_reason = await self.circuit_breaker.can_execute(selected.provider)
+            if not provider_ok:
+                logger.warning(f"Circuit breaker open for {selected.provider}: {cb_reason}")
+                # Try fallback provider selection
+                # For now, just fail - could implement provider-specific fallback here
+                await self.db.update_task_status(
+                    request.task_id,
+                    TaskStatus.FAILED.value,
+                    error=cb_reason
+                )
+                return ExecuteResponse(
+                    task_id=request.task_id,
+                    status=TaskStatus.FAILED,
+                    error=cb_reason,
+                )
             
             # Generate response with fallback support
             output, token_usage, metrics = await self.model_selector.execute_with_fallback(
@@ -114,6 +238,42 @@ class Orchestrator:
                 context=context,
                 user_input=request.input,
             )
+            
+            # Calculate actual credits using per-model pricing
+            input_tokens = token_usage.get("prompt_tokens", 0)
+            output_tokens = token_usage.get("completion_tokens", 0)
+            
+            if model_def:
+                credits_consumed = self.cost_engine.calculate_credits_for_model(
+                    model_def, input_tokens, output_tokens
+                )
+            else:
+                credits_consumed = self.cost_engine.calculate_actual_credits(
+                    cost_level, input_tokens, output_tokens
+                )
+            
+            # Consume credits (only if non-zero)
+            if credits_consumed > 0:
+                consume_result = await self.credit_client.consume_credits(
+                    office_id=request.office_id,
+                    task_id=request.task_id,
+                    credits=credits_consumed,
+                    model_name=selected.model_name,
+                )
+                if not consume_result.success:
+                    logger.warning(f"Credit consumption failed: {consume_result.error}")
+                else:
+                    logger.info(
+                        f"Consumed {credits_consumed} credits for task {request.task_id} "
+                        f"(balance: {consume_result.new_balance})"
+                    )
+                    # Record for rate limiting
+                    await self.rate_limiter.record_consumption(
+                        office_id=request.office_id,
+                        credits=credits_consumed,
+                        model_name=selected.model_name,
+                        task_id=request.task_id,
+                    )
             
             # Update task with output
             await self.db.update_task_status(
@@ -132,6 +292,9 @@ class Orchestrator:
             metrics.task_id = request.task_id
             await self.metrics.save(metrics)
             
+            # Record circuit breaker success
+            await self.circuit_breaker.record_success(selected.provider)
+            
             return ExecuteResponse(
                 task_id=request.task_id,
                 status=TaskStatus.DONE,
@@ -141,6 +304,16 @@ class Orchestrator:
             
         except Exception as e:
             logger.error(f"Task execution error: {e}")
+            
+            # Record circuit breaker failure if we had a selected model
+            if selected_model_name:
+                try:
+                    selected = self.model_selector.registry.get_model(selected_model_name)
+                    if selected:
+                        await self.circuit_breaker.record_failure(selected.provider)
+                except Exception:
+                    pass  # Don't fail on metric recording
+            
             await self.db.update_task_status(
                 request.task_id, 
                 TaskStatus.FAILED.value, 

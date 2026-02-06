@@ -43,6 +43,14 @@ class ModelCapabilities(BaseModel):
     real_time_data: int = 0
 
 
+class ModelPricing(BaseModel):
+    """Pricing configuration for a model."""
+    credits_per_1k_input: float = 0.0
+    credits_per_1k_output: float = 0.0
+    usd_per_1k_input: float = 0.0
+    usd_per_1k_output: float = 0.0
+
+
 class ModelDefinition(BaseModel):
     """Definition of a model from the registry."""
     name: str
@@ -52,6 +60,7 @@ class ModelDefinition(BaseModel):
     max_tokens: int
     available: bool = True
     capabilities: ModelCapabilities
+    pricing: Optional[ModelPricing] = None
 
 
 class TaskCapabilityProfile(BaseModel):

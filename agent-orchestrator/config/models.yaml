@@ -6,6 +6,12 @@ models:
     latency: medium
     max_tokens: 128000
     available: true
+    # Pricing (credits per 1K tokens and USD cost reference)
+    pricing:
+      credits_per_1k_input: 25.0
+      credits_per_1k_output: 50.0
+      usd_per_1k_input: 0.01
+      usd_per_1k_output: 0.03
     capabilities:
       reasoning: 9
       coding: 9
@@ -20,6 +26,11 @@ models:
     latency: fast
     max_tokens: 128000
     available: true
+    pricing:
+      credits_per_1k_input: 20.0
+      credits_per_1k_output: 40.0
+      usd_per_1k_input: 0.005
+      usd_per_1k_output: 0.015
     capabilities:
       reasoning: 9
       coding: 9
@@ -35,6 +46,11 @@ models:
     latency: fast
     max_tokens: 16000
     available: true
+    pricing:
+      credits_per_1k_input: 3.0
+      credits_per_1k_output: 6.0
+      usd_per_1k_input: 0.0005
+      usd_per_1k_output: 0.0015
     capabilities:
       reasoning: 6
       coding: 6
@@ -49,6 +65,11 @@ models:
     latency: medium
     max_tokens: 200000
     available: true
+    pricing:
+      credits_per_1k_input: 15.0
+      credits_per_1k_output: 75.0
+      usd_per_1k_input: 0.003
+      usd_per_1k_output: 0.015
     capabilities:
       reasoning: 10
       coding: 10
@@ -63,6 +84,11 @@ models:
     latency: fast
     max_tokens: 200000
     available: true
+    pricing:
+      credits_per_1k_input: 1.0
+      credits_per_1k_output: 5.0
+      usd_per_1k_input: 0.00025
+      usd_per_1k_output: 0.00125
     capabilities:
       reasoning: 7
       coding: 7
@@ -77,6 +103,11 @@ models:
     latency: fast
     max_tokens: 32000
     available: true
+    pricing:
+      credits_per_1k_input: 0.5
+      credits_per_1k_output: 1.0
+      usd_per_1k_input: 0.00006
+      usd_per_1k_output: 0.00024
     capabilities:
       reasoning: 8
       coding: 8
@@ -90,19 +121,29 @@ models:
     latency: fast
     max_tokens: 32768
     available: true
+    pricing:
+      credits_per_1k_input: 0.3
+      credits_per_1k_output: 0.6
+      usd_per_1k_input: 0.00003
+      usd_per_1k_output: 0.00006
     capabilities:
       reasoning: 7
       coding: 7
       summarization: 7
       speed: 10
 
-  # === Ollama Local Models ===
+  # === Ollama Local Models (Free) ===
   - name: llama3:8b
     provider: ollama
     cost_level: free
     latency: medium
     max_tokens: 8000
     available: true
+    pricing:
+      credits_per_1k_input: 0.0
+      credits_per_1k_output: 0.0
+      usd_per_1k_input: 0.0
+      usd_per_1k_output: 0.0
     capabilities:
       reasoning: 6
       coding: 6
@@ -115,6 +156,11 @@ models:
     latency: slow
     max_tokens: 8000
     available: true
+    pricing:
+      credits_per_1k_input: 0.0
+      credits_per_1k_output: 0.0
+      usd_per_1k_input: 0.0
+      usd_per_1k_output: 0.0
     capabilities:
       reasoning: 8
       coding: 8
@@ -127,6 +173,11 @@ models:
     latency: medium
     max_tokens: 16000
     available: true
+    pricing:
+      credits_per_1k_input: 0.0
+      credits_per_1k_output: 0.0
+      usd_per_1k_input: 0.0
+      usd_per_1k_output: 0.0
     capabilities:
       reasoning: 5
       coding: 8
@@ -139,6 +190,11 @@ models:
     latency: fast
     max_tokens: 8000
     available: true
+    pricing:
+      credits_per_1k_input: 0.0
+      credits_per_1k_output: 0.0
+      usd_per_1k_input: 0.0
+      usd_per_1k_output: 0.0
     capabilities:
       reasoning: 6
       coding: 6
@@ -151,3 +207,4 @@ defaults:
   anthropic: claude-3-5-sonnet-20241022
   groq: llama-3.3-70b-versatile
   ollama: llama3:8b
+

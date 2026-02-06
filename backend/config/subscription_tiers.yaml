@@ -1,0 +1,114 @@
+# Subscription Tier Configuration
+# Defines available subscription plans and their features
+
+tiers:
+  solo:
+    name: "Solo Founder"
+    description: "Perfect for individual developers and hobbyists"
+    price_monthly_usd: 0
+    price_yearly_usd: 0
+    stripe_price_id_monthly: null  # Free tier, no Stripe
+    stripe_price_id_yearly: null
+    features:
+      max_agents: 3
+      monthly_credits: 1000
+      max_seats: 1
+      model_access:
+        - ollama
+        - groq
+      priority: low
+      retention_days: 30
+      # Feature flags
+      web_research: false
+      advanced_orchestration: false
+      analytics: false
+      api_access: false
+
+  professional:
+    name: "Professional"
+    description: "For power users and small teams"
+    price_monthly_usd: 29
+    price_yearly_usd: 290  # ~17% discount
+    stripe_price_id_monthly: "price_professional_monthly"
+    stripe_price_id_yearly: "price_professional_yearly"
+    features:
+      max_agents: 10
+      monthly_credits: 10000
+      max_seats: 5
+      model_access:
+        - ollama
+        - groq
+        - openai
+      priority: normal
+      retention_days: 90
+      web_research: true
+      advanced_orchestration: false
+      analytics: false
+      api_access: true
+
+  business:
+    name: "Business"
+    description: "For growing teams with advanced needs"
+    price_monthly_usd: 99
+    price_yearly_usd: 990  # ~17% discount
+    stripe_price_id_monthly: "price_business_monthly"
+    stripe_price_id_yearly: "price_business_yearly"
+    features:
+      max_agents: 50
+      monthly_credits: 50000
+      max_seats: 20
+      model_access:
+        - ollama
+        - groq
+        - openai
+        - anthropic
+      priority: high
+      retention_days: 365
+      web_research: true
+      advanced_orchestration: true
+      analytics: true
+      api_access: true
+
+  enterprise:
+    name: "Enterprise"
+    description: "Custom solutions for large organizations"
+    price_monthly_usd: null  # Custom pricing
+    price_yearly_usd: null
+    stripe_price_id_monthly: null  # Custom
+    stripe_price_id_yearly: null
+    features:
+      max_agents: -1  # unlimited
+      monthly_credits: -1  # unlimited
+      max_seats: -1  # unlimited
+      model_access:
+        - ollama
+        - groq
+        - openai
+        - anthropic
+      priority: highest
+      retention_days: -1  # unlimited
+      web_research: true
+      advanced_orchestration: true
+      analytics: true
+      api_access: true
+      sla: true
+      dedicated_support: true
+      on_premise_option: true
+
+# Default tier for new offices
+default_tier: solo
+
+# Credit add-on packages
+credit_packages:
+  small:
+    credits: 5000
+    price_usd: 10
+    stripe_price_id: "price_credits_5k"
+  medium:
+    credits: 25000
+    price_usd: 40  # 20% discount
+    stripe_price_id: "price_credits_25k"
+  large:
+    credits: 100000
+    price_usd: 120  # 40% discount
+    stripe_price_id: "price_credits_100k"

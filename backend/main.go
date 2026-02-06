@@ -40,6 +40,10 @@ func main() {
 	taskRepo := repository.NewTaskRepository(pool)
 	marketplaceRepo := repository.NewMarketplaceRepository(pool)
 	feedbackRepo := repository.NewFeedbackRepository(pool)
+	creditRepo := repository.NewCreditRepository(pool)
+	subscriptionRepo := repository.NewSubscriptionRepository(pool)
+	analyticsRepo := repository.NewAnalyticsRepository(pool)
+	earningsRepo := repository.NewEarningsRepository(pool)
 
 	// Initialize services
 	authService := service.NewAuthService(userRepo, officeRepo, cfg.JWTSecret)
@@ -48,6 +52,10 @@ func main() {
 	chatService := service.NewChatService(conversationRepo, messageRepo, agentRepo, taskService)
 	marketplaceService := service.NewMarketplaceService(marketplaceRepo)
 	feedbackService := service.NewFeedbackService(feedbackRepo, agentRepo, officeRepo)
+	creditService := service.NewCreditService(creditRepo, officeRepo)
+	subscriptionService := service.NewSubscriptionService(subscriptionRepo, creditRepo, "config/subscription_tiers.yaml")
+	analyticsService := service.NewAnalyticsService(analyticsRepo, creditRepo)
+	earningsService := service.NewEarningsService(earningsRepo, marketplaceRepo)
 
 	// Initialize handlers
 	authHandler := api.NewAuthHandler(authService)
@@ -56,9 +64,12 @@ func main() {
 	wsHandler := api.NewWSHandler(authService)
 	marketplaceHandler := api.NewMarketplaceHandler(marketplaceService)
 	feedbackHandler := api.NewFeedbackHandler(feedbackService)
-	internalHandler := api.NewInternalHandler(wsHandler, conversationRepo)
+	internalHandler := api.NewInternalHandler(wsHandler, conversationRepo, creditService)
+	creditHandler := api.NewCreditHandler(creditService)
+	subscriptionHandler := api.NewSubscriptionHandler(subscriptionService)
+	analyticsHandler := api.NewAnalyticsHandler(analyticsService)
+	earningsHandler := api.NewEarningsHandler(earningsService)
 
-	// Initialize router
 	router := api.NewRouter(
 		authHandler,
 		agentHandler,
@@ -67,6 +78,10 @@ func main() {
 		marketplaceHandler,
 		feedbackHandler,
 		internalHandler,
+		creditHandler,
+		subscriptionHandler,
+		analyticsHandler,
+		earningsHandler,
 		authService,
 		cfg.InternalAPIKey,
 	)

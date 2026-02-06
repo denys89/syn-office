@@ -11,15 +11,19 @@ import (
 
 // Router holds all route handlers
 type Router struct {
-	authHandler        *AuthHandler
-	agentHandler       *AgentHandler
-	chatHandler        *ChatHandler
-	wsHandler          *WSHandler
-	marketplaceHandler *MarketplaceHandler
-	feedbackHandler    *FeedbackHandler
-	internalHandler    *InternalHandler
-	authService        *service.AuthService
-	internalAPIKey     string
+	authHandler         *AuthHandler
+	agentHandler        *AgentHandler
+	chatHandler         *ChatHandler
+	wsHandler           *WSHandler
+	marketplaceHandler  *MarketplaceHandler
+	feedbackHandler     *FeedbackHandler
+	internalHandler     *InternalHandler
+	creditHandler       *CreditHandler
+	subscriptionHandler *SubscriptionHandler
+	analyticsHandler    *AnalyticsHandler
+	earningsHandler     *EarningsHandler
+	authService         *service.AuthService
+	internalAPIKey      string
 }
 
 // NewRouter creates a new Router
@@ -31,19 +35,27 @@ func NewRouter(
 	marketplaceHandler *MarketplaceHandler,
 	feedbackHandler *FeedbackHandler,
 	internalHandler *InternalHandler,
+	creditHandler *CreditHandler,
+	subscriptionHandler *SubscriptionHandler,
+	analyticsHandler *AnalyticsHandler,
+	earningsHandler *EarningsHandler,
 	authService *service.AuthService,
 	internalAPIKey string,
 ) *Router {
 	return &Router{
-		authHandler:        authHandler,
-		agentHandler:       agentHandler,
-		chatHandler:        chatHandler,
-		wsHandler:          wsHandler,
-		marketplaceHandler: marketplaceHandler,
-		feedbackHandler:    feedbackHandler,
-		internalHandler:    internalHandler,
-		authService:        authService,
-		internalAPIKey:     internalAPIKey,
+		authHandler:         authHandler,
+		agentHandler:        agentHandler,
+		chatHandler:         chatHandler,
+		wsHandler:           wsHandler,
+		marketplaceHandler:  marketplaceHandler,
+		feedbackHandler:     feedbackHandler,
+		internalHandler:     internalHandler,
+		creditHandler:       creditHandler,
+		subscriptionHandler: subscriptionHandler,
+		analyticsHandler:    analyticsHandler,
+		earningsHandler:     earningsHandler,
+		authService:         authService,
+		internalAPIKey:      internalAPIKey,
 	}
 }
 
@@ -85,6 +97,10 @@ func (r *Router) Setup(app *fiber.App) {
 	internal := v1.Group("/internal")
 	internal.Use(InternalAPIKeyMiddleware(r.internalAPIKey))
 	internal.Post("/task-complete", r.internalHandler.TaskComplete)
+	// Credit routes for orchestrator
+	internal.Post("/credits/check", r.internalHandler.CheckCredits)
+	internal.Post("/credits/consume", r.internalHandler.ConsumeCredits)
+	internal.Get("/credits/balance/:officeId", r.internalHandler.GetBalance)
 
 	// Protected routes
 	protected := v1.Group("")
@@ -116,9 +132,46 @@ func (r *Router) Setup(app *fiber.App) {
 	messages := protected.Group("/messages")
 	messages.Post("/:id/feedback", r.feedbackHandler.CreateMessageFeedback)
 
-	// Marketplace routes (protected for reviews)
+	// Credit routes (protected)
+	credits := protected.Group("/credits")
+	credits.Get("/wallet", r.creditHandler.GetWallet)
+	credits.Get("/balance", r.creditHandler.GetBalance)
+	credits.Get("/summary", r.creditHandler.GetWalletSummary)
+	credits.Get("/transactions", r.creditHandler.GetTransactions)
+	credits.Post("/check", r.creditHandler.CheckBalance)
+
+	// Subscription routes
+	subscription := protected.Group("/subscription")
+	subscription.Get("", r.subscriptionHandler.GetSubscription)
+	subscription.Get("/summary", r.subscriptionHandler.GetSubscriptionSummary)
+	subscription.Get("/tiers", r.subscriptionHandler.GetTiers)
+	subscription.Get("/tiers/:tier", r.subscriptionHandler.GetTier)
+	subscription.Post("/upgrade", r.subscriptionHandler.UpgradeTier)
+	subscription.Post("/check-model-access", r.subscriptionHandler.CheckModelAccess)
+
+	// Stripe webhook (public, verified by signature)
+	v1.Post("/webhooks/stripe", r.subscriptionHandler.HandleStripeWebhook)
+
+	// Usage analytics routes
+	usage := protected.Group("/usage")
+	usage.Get("/summary", r.analyticsHandler.GetUsageSummary)
+	usage.Get("/breakdown", r.analyticsHandler.GetUsageBreakdown)
+	usage.Get("/daily", r.analyticsHandler.GetDailyUsage)
+	usage.Get("/by-model", r.analyticsHandler.GetModelUsage)
+	usage.Get("/by-agent", r.analyticsHandler.GetAgentUsage)
+
+	// Marketplace routes (protected for reviews and purchases)
 	protectedMarketplace := protected.Group("/marketplace")
 	protectedMarketplace.Post("/agents/:id/reviews", r.marketplaceHandler.CreateReview)
+	protectedMarketplace.Post("/purchase", r.earningsHandler.PurchaseTemplate)
+
+	// Author earnings routes
+	author := protected.Group("/author")
+	author.Get("/earnings", r.earningsHandler.GetAuthorEarnings)
+	author.Get("/balance", r.earningsHandler.GetAuthorBalance)
+	author.Get("/summary", r.earningsHandler.GetEarningsSummary)
+	author.Post("/payout/request", r.earningsHandler.RequestPayout)
+	author.Get("/payouts", r.earningsHandler.GetPayoutRequests)
 
 	// WebSocket route (with upgrade middleware)
 	app.Use("/ws", func(c *fiber.Ctx) error {

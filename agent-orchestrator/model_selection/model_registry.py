@@ -8,6 +8,7 @@ import yaml
 from .types import (
     ModelDefinition,
     ModelCapabilities,
+    ModelPricing,
     Provider,
     CostLevel,
     LatencyLevel,
@@ -57,6 +58,12 @@ class ModelRegistry:
     def _parse_model(self, data: dict) -> ModelDefinition:
         """Parse a model definition from config data."""
         capabilities = ModelCapabilities(**data.get("capabilities", {}))
+        
+        # Parse pricing if present
+        pricing = None
+        if "pricing" in data:
+            pricing = ModelPricing(**data["pricing"])
+        
         return ModelDefinition(
             name=data["name"],
             provider=Provider(data["provider"]),
@@ -65,6 +72,7 @@ class ModelRegistry:
             max_tokens=data.get("max_tokens", 4000),
             available=data.get("available", True),
             capabilities=capabilities,
+            pricing=pricing,
         )
 
     def _load_defaults(self) -> None:
