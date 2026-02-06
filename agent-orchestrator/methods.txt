@@ -1,0 +1,1 @@
+['_resolve_query', '_resolve_query_batch_request', '_resolve_query_request', '_scored_points_to_query_responses', 'query', 'query_batch', 'query_batch_points', 'query_points', 'query_points_groups', 'search_matrix_offsets', 'search_matrix_pairs']
