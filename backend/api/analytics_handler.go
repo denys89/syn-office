@@ -20,11 +20,15 @@ func NewAnalyticsHandler(analyticsService *service.AnalyticsService) *AnalyticsH
 
 // getOfficeID extracts office ID from context
 func (h *AnalyticsHandler) getOfficeID(c *fiber.Ctx) (uuid.UUID, error) {
-	officeIDStr := c.Locals("office_id")
-	if officeIDStr == nil {
+	officeIDVal := c.Locals("office_id")
+	if officeIDVal == nil {
 		return uuid.Nil, fiber.ErrUnauthorized
 	}
-	return uuid.Parse(officeIDStr.(string))
+	officeID, ok := officeIDVal.(uuid.UUID)
+	if !ok {
+		return uuid.Nil, fiber.ErrBadRequest
+	}
+	return officeID, nil
 }
 
 // GetUsageSummary returns usage summary for the office

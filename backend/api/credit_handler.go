@@ -21,17 +21,17 @@ func NewCreditHandler(creditService *service.CreditService) *CreditHandler {
 // GetWallet returns the credit wallet for the current office
 // GET /credits/wallet
 func (h *CreditHandler) GetWallet(c *fiber.Ctx) error {
-	officeIDStr := c.Locals("office_id")
-	if officeIDStr == nil {
+	officeIDVal := c.Locals("office_id")
+	if officeIDVal == nil {
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
 			"error": "office_id not found in context",
 		})
 	}
 
-	officeID, err := uuid.Parse(officeIDStr.(string))
-	if err != nil {
+	officeID, ok := officeIDVal.(uuid.UUID)
+	if !ok {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"error": "invalid office_id",
+			"error": "invalid office_id type",
 		})
 	}
 
@@ -48,17 +48,17 @@ func (h *CreditHandler) GetWallet(c *fiber.Ctx) error {
 // GetBalance returns the current credit balance
 // GET /credits/balance
 func (h *CreditHandler) GetBalance(c *fiber.Ctx) error {
-	officeIDStr := c.Locals("office_id")
-	if officeIDStr == nil {
+	officeIDVal := c.Locals("office_id")
+	if officeIDVal == nil {
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
 			"error": "office_id not found in context",
 		})
 	}
 
-	officeID, err := uuid.Parse(officeIDStr.(string))
-	if err != nil {
+	officeID, ok := officeIDVal.(uuid.UUID)
+	if !ok {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"error": "invalid office_id",
+			"error": "invalid office_id type",
 		})
 	}
 
@@ -77,17 +77,17 @@ func (h *CreditHandler) GetBalance(c *fiber.Ctx) error {
 // GetWalletSummary returns a summary of the wallet
 // GET /credits/summary
 func (h *CreditHandler) GetWalletSummary(c *fiber.Ctx) error {
-	officeIDStr := c.Locals("office_id")
-	if officeIDStr == nil {
+	officeIDVal := c.Locals("office_id")
+	if officeIDVal == nil {
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
 			"error": "office_id not found in context",
 		})
 	}
 
-	officeID, err := uuid.Parse(officeIDStr.(string))
-	if err != nil {
+	officeID, ok := officeIDVal.(uuid.UUID)
+	if !ok {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"error": "invalid office_id",
+			"error": "invalid office_id type",
 		})
 	}
 
@@ -104,17 +104,17 @@ func (h *CreditHandler) GetWalletSummary(c *fiber.Ctx) error {
 // GetTransactions returns credit transaction history
 // GET /credits/transactions?limit=50&offset=0
 func (h *CreditHandler) GetTransactions(c *fiber.Ctx) error {
-	officeIDStr := c.Locals("office_id")
-	if officeIDStr == nil {
+	officeIDVal := c.Locals("office_id")
+	if officeIDVal == nil {
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
 			"error": "office_id not found in context",
 		})
 	}
 
-	officeID, err := uuid.Parse(officeIDStr.(string))
-	if err != nil {
+	officeID, ok := officeIDVal.(uuid.UUID)
+	if !ok {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"error": "invalid office_id",
+			"error": "invalid office_id type",
 		})
 	}
 
@@ -153,17 +153,17 @@ type CheckBalanceRequest struct {
 }
 
 func (h *CreditHandler) CheckBalance(c *fiber.Ctx) error {
-	officeIDStr := c.Locals("office_id")
-	if officeIDStr == nil {
+	officeIDVal := c.Locals("office_id")
+	if officeIDVal == nil {
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
 			"error": "office_id not found in context",
 		})
 	}
 
-	officeID, err := uuid.Parse(officeIDStr.(string))
-	if err != nil {
+	officeID, ok := officeIDVal.(uuid.UUID)
+	if !ok {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"error": "invalid office_id",
+			"error": "invalid office_id type",
 		})
 	}
 

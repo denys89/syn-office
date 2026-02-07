@@ -60,9 +60,10 @@ func (r *SubscriptionRepository) GetByID(ctx context.Context, id uuid.UUID) (*do
 	`
 
 	var sub domain.Subscription
+	var stripeCustomerID, stripeSubscriptionID, stripePriceID *string
 	err := r.db.QueryRow(ctx, query, id).Scan(
 		&sub.ID, &sub.OfficeID, &sub.Tier, &sub.Status, &sub.BillingInterval,
-		&sub.StripeCustomerID, &sub.StripeSubscriptionID, &sub.StripePriceID,
+		&stripeCustomerID, &stripeSubscriptionID, &stripePriceID,
 		&sub.CurrentPeriodStart, &sub.CurrentPeriodEnd, &sub.CancelAtPeriodEnd,
 		&sub.CancelledAt, &sub.TrialStart, &sub.TrialEnd, &sub.Metadata,
 		&sub.CreatedAt, &sub.UpdatedAt,
@@ -70,6 +71,18 @@ func (r *SubscriptionRepository) GetByID(ctx context.Context, id uuid.UUID) (*do
 	if err != nil {
 		return nil, err
 	}
+
+	// Convert nullable strings
+	if stripeCustomerID != nil {
+		sub.StripeCustomerID = *stripeCustomerID
+	}
+	if stripeSubscriptionID != nil {
+		sub.StripeSubscriptionID = *stripeSubscriptionID
+	}
+	if stripePriceID != nil {
+		sub.StripePriceID = *stripePriceID
+	}
+
 	return &sub, nil
 }
 
@@ -85,9 +98,10 @@ func (r *SubscriptionRepository) GetByOfficeID(ctx context.Context, officeID uui
 	`
 
 	var sub domain.Subscription
+	var stripeCustomerID, stripeSubscriptionID, stripePriceID *string
 	err := r.db.QueryRow(ctx, query, officeID).Scan(
 		&sub.ID, &sub.OfficeID, &sub.Tier, &sub.Status, &sub.BillingInterval,
-		&sub.StripeCustomerID, &sub.StripeSubscriptionID, &sub.StripePriceID,
+		&stripeCustomerID, &stripeSubscriptionID, &stripePriceID,
 		&sub.CurrentPeriodStart, &sub.CurrentPeriodEnd, &sub.CancelAtPeriodEnd,
 		&sub.CancelledAt, &sub.TrialStart, &sub.TrialEnd, &sub.Metadata,
 		&sub.CreatedAt, &sub.UpdatedAt,
@@ -95,6 +109,18 @@ func (r *SubscriptionRepository) GetByOfficeID(ctx context.Context, officeID uui
 	if err != nil {
 		return nil, err
 	}
+
+	// Convert nullable strings
+	if stripeCustomerID != nil {
+		sub.StripeCustomerID = *stripeCustomerID
+	}
+	if stripeSubscriptionID != nil {
+		sub.StripeSubscriptionID = *stripeSubscriptionID
+	}
+	if stripePriceID != nil {
+		sub.StripePriceID = *stripePriceID
+	}
+
 	return &sub, nil
 }
 
@@ -110,9 +136,10 @@ func (r *SubscriptionRepository) GetByStripeID(ctx context.Context, stripeID str
 	`
 
 	var sub domain.Subscription
+	var stripeCustomerID, stripeSubscriptionID, stripePriceID *string
 	err := r.db.QueryRow(ctx, query, stripeID).Scan(
 		&sub.ID, &sub.OfficeID, &sub.Tier, &sub.Status, &sub.BillingInterval,
-		&sub.StripeCustomerID, &sub.StripeSubscriptionID, &sub.StripePriceID,
+		&stripeCustomerID, &stripeSubscriptionID, &stripePriceID,
 		&sub.CurrentPeriodStart, &sub.CurrentPeriodEnd, &sub.CancelAtPeriodEnd,
 		&sub.CancelledAt, &sub.TrialStart, &sub.TrialEnd, &sub.Metadata,
 		&sub.CreatedAt, &sub.UpdatedAt,
@@ -120,6 +147,18 @@ func (r *SubscriptionRepository) GetByStripeID(ctx context.Context, stripeID str
 	if err != nil {
 		return nil, err
 	}
+
+	// Convert nullable strings
+	if stripeCustomerID != nil {
+		sub.StripeCustomerID = *stripeCustomerID
+	}
+	if stripeSubscriptionID != nil {
+		sub.StripeSubscriptionID = *stripeSubscriptionID
+	}
+	if stripePriceID != nil {
+		sub.StripePriceID = *stripePriceID
+	}
+
 	return &sub, nil
 }
 

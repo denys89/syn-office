@@ -152,6 +152,52 @@ class ApiClient {
             `/agents/${agentId}/memories?${params.toString()}`
         );
     }
+
+    // Credits
+    async getWalletBalance() {
+        return this.request<Wallet>('/credits/balance');
+    }
+
+    async purchaseCredits(amountCents: number, paymentMethodId: string) {
+        return this.request<{ transaction_id: string; new_balance: number }>('/credits/purchase', {
+            method: 'POST',
+            body: JSON.stringify({ amount_cents: amountCents, payment_method_id: paymentMethodId }),
+        });
+    }
+
+    // Subscriptions
+    async getSubscriptionStatus() {
+        return this.request<SubscriptionStatus>('/subscription/summary');
+    }
+
+    async getTiers() {
+        return this.request<{ tiers: Tier[] }>('/subscription/tiers');
+    }
+
+    async upgradeTier(tierId: string, paymentMethodId: string) {
+        return this.request<{ subscription_id: string }>('/subscription/upgrade', {
+            method: 'POST',
+            body: JSON.stringify({ tier_id: tierId, payment_method_id: paymentMethodId }),
+        });
+    }
+
+    // Analytics
+    async getUsageSummary(period: '30d' | '7d' | 'today' = '30d') {
+        return this.request<UsageSummary>(`/usage/summary?period=${period}`);
+    }
+
+    async getUsageBreakdown(days = 30) {
+        return this.request<UsageBreakdown>(`/usage/breakdown?days=${days}`);
+    }
+
+    async getDailyUsage(days = 30) {
+        return this.request<{ daily_usage: UsageDaily[] }>(`/usage/daily?days=${days}`);
+    }
+
+    // Earnings
+    async getAuthorBalance() {
+        return this.request<AuthorBalance>('/author/balance');
+    }
 }
 
 // Types
@@ -275,6 +321,82 @@ export interface AgentMemory {
     importance_score: number;
     created_at: string;
     updated_at: string;
+}
+
+// Credit Types
+export interface Wallet {
+    id: string;
+    office_id: string;
+    balance: number;
+    currency: string;
+    updated_at: string;
+}
+
+// Subscription Types
+export interface Tier {
+    id: string;
+    name: string;
+    price_monthly_cents: number;
+    credits_per_period: number;
+    features: string[];
+}
+
+export interface SubscriptionStatus {
+    subscription: {
+        id: string;
+        tier_id: string;
+        status: string;
+        current_period_end: string;
+    };
+    tier_definition: Tier;
+    current_balance: number;
+    period_credits_allocated: number;
+    period_credits_consumed: number;
+    days_remaining: number;
+}
+
+// Analytics Types
+export interface UsageSummary {
+    period: string;
+    credits_used: number;
+    credits_remaining: number;
+    tasks_executed: number;
+    tokens_processed: number;
+    estimated_cost_usd: number;
+    local_model_ratio: number;
+}
+
+export interface UsageDaily {
+    date: string;
+    credits_consumed: number;
+    tasks_executed: number;
+    local_model_tasks: number;
+    paid_model_tasks: number;
+}
+
+export interface UsageBreakdown {
+    usage_by_model: Array<{
+        model: string;
+        provider: string;
+        total_tasks: number;
+        total_credits: number;
+        percent_of_usage: number;
+    }>;
+    usage_by_agent: Array<{
+        agent_name: string;
+        role: string;
+        total_tasks: number;
+        total_credits: number;
+    }>;
+}
+
+// Earnings Types
+export interface AuthorBalance {
+    author_id: string;
+    total_earned_cents: number;
+    total_paid_out_cents: number;
+    pending_payout_cents: number;
+    available_balance_cents: number;
 }
 
 // Singleton instance

@@ -20,20 +20,28 @@ func NewEarningsHandler(earningsService *service.EarningsService) *EarningsHandl
 
 // getUserID extracts user ID from context
 func (h *EarningsHandler) getUserID(c *fiber.Ctx) (uuid.UUID, error) {
-	userIDStr := c.Locals("user_id")
-	if userIDStr == nil {
+	userIDVal := c.Locals("user_id")
+	if userIDVal == nil {
 		return uuid.Nil, fiber.ErrUnauthorized
 	}
-	return uuid.Parse(userIDStr.(string))
+	userID, ok := userIDVal.(uuid.UUID)
+	if !ok {
+		return uuid.Nil, fiber.ErrBadRequest
+	}
+	return userID, nil
 }
 
 // getOfficeID extracts office ID from context
 func (h *EarningsHandler) getOfficeID(c *fiber.Ctx) (uuid.UUID, error) {
-	officeIDStr := c.Locals("office_id")
-	if officeIDStr == nil {
+	officeIDVal := c.Locals("office_id")
+	if officeIDVal == nil {
 		return uuid.Nil, fiber.ErrUnauthorized
 	}
-	return uuid.Parse(officeIDStr.(string))
+	officeID, ok := officeIDVal.(uuid.UUID)
+	if !ok {
+		return uuid.Nil, fiber.ErrBadRequest
+	}
+	return officeID, nil
 }
 
 // PurchaseRequest represents a template purchase request

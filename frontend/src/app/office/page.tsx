@@ -3,7 +3,7 @@
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { api, Conversation, Agent } from '@/lib/api';
+import { api, Conversation, Agent, Wallet } from '@/lib/api';
 import { AgentAvatar } from '@/components/AgentAvatar';
 import { ChatWindow } from '@/components/ChatWindow';
 import { getAgentRoleIcon } from '@/lib/utils';
@@ -15,6 +15,7 @@ export default function Office() {
     const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
     const [showNewChat, setShowNewChat] = useState(false);
     const [loadingConversations, setLoadingConversations] = useState(true);
+    const [wallet, setWallet] = useState<Wallet | null>(null);
 
     useEffect(() => {
         if (!isLoading && !isAuthenticated) {
@@ -45,6 +46,18 @@ export default function Office() {
             setLoadingConversations(false);
         }
     };
+
+    useEffect(() => {
+        if (isAuthenticated) {
+            api.getWalletBalance()
+                .then(setWallet)
+                .catch((error) => {
+                    // Silently fail if credits system isn't set up yet
+                    console.warn('Credits not available:', error.message);
+                    setWallet(null);
+                });
+        }
+    }, [isAuthenticated]);
 
     const startDirectChat = async (agent: Agent) => {
         try {
@@ -88,7 +101,12 @@ export default function Office() {
                 {/* Header */}
                 <div className="p-4 border-b border-[var(--border)]">
                     <div className="flex items-center justify-between mb-4">
-                        <h1 className="text-xl font-bold gradient-text">Synoffice</h1>
+                        <div className="flex flex-col">
+                            <h1 className="text-xl font-bold gradient-text leading-none">Synoffice</h1>
+                            <div className="text-xs font-semibold px-2 py-0.5 rounded-full bg-[var(--primary)]/10 text-[var(--primary)] w-fit mt-1 border border-[var(--primary)]/20">
+                                💎 {wallet?.balance ?? 0} Credits
+                            </div>
+                        </div>
                         <button
                             onClick={handleLogout}
                             className="text-[var(--muted)] hover:text-white transition-colors"
@@ -192,6 +210,29 @@ export default function Office() {
                         <span>🛒</span>
                         <span>Browse Marketplace</span>
                     </a>
+                    <div className="border-t border-[var(--border)] mt-2 pt-2 space-y-1">
+                        <a
+                            href="/office/analytics"
+                            className="flex items-center gap-2 text-sm text-[var(--muted)] hover:text-white transition-colors px-2 py-2 rounded-lg hover:bg-[var(--secondary)]"
+                        >
+                            <span>📊</span>
+                            <span>Usage Analytics</span>
+                        </a>
+                        <a
+                            href="/office/billing"
+                            className="flex items-center gap-2 text-sm text-[var(--muted)] hover:text-white transition-colors px-2 py-2 rounded-lg hover:bg-[var(--secondary)]"
+                        >
+                            <span>💳</span>
+                            <span>Billing & Plans</span>
+                        </a>
+                        <a
+                            href="/office/author"
+                            className="flex items-center gap-2 text-sm text-[var(--muted)] hover:text-white transition-colors px-2 py-2 rounded-lg hover:bg-[var(--secondary)]"
+                        >
+                            <span>💰</span>
+                            <span>Author Earnings</span>
+                        </a>
+                    </div>
                 </div>
             </div>
 

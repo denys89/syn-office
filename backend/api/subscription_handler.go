@@ -19,11 +19,15 @@ func NewSubscriptionHandler(subService *service.SubscriptionService) *Subscripti
 
 // getOfficeID extracts office ID from context
 func (h *SubscriptionHandler) getOfficeID(c *fiber.Ctx) (uuid.UUID, error) {
-	officeIDStr := c.Locals("office_id")
-	if officeIDStr == nil {
+	officeIDVal := c.Locals("office_id")
+	if officeIDVal == nil {
 		return uuid.Nil, fiber.ErrUnauthorized
 	}
-	return uuid.Parse(officeIDStr.(string))
+	officeID, ok := officeIDVal.(uuid.UUID)
+	if !ok {
+		return uuid.Nil, fiber.ErrBadRequest
+	}
+	return officeID, nil
 }
 
 // GetSubscription returns the office's subscription
@@ -72,10 +76,18 @@ func (h *SubscriptionHandler) GetTiers(c *fiber.Ctx) error {
 	tiers := h.subService.GetAllTiers()
 
 	tierList := make([]fiber.Map, 0, len(tiers))
-	for tier, def := range tiers {
+	for tierID, def := range tiers {
+		priceMonthly := 0
+		if def.PriceMonthlyUSD != nil {
+			priceMonthly = int(*def.PriceMonthlyUSD * 100) // Convert to cents
+		}
+
 		tierList = append(tierList, fiber.Map{
-			"tier":       tier,
-			"definition": def,
+			"id":                  string(tierID),
+			"name":                def.Name,
+			"price_monthly_cents": priceMonthly,
+			"credits_per_period":  def.Features.MonthlyCredits,
+			"features":            []string{def.Description}, // Simple feature list
 		})
 	}
 
