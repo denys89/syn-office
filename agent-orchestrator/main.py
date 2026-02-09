@@ -6,6 +6,7 @@ from config import get_settings
 from database import get_database
 from orchestrator import get_orchestrator
 from models import ExecuteRequest, ExecuteResponse, TaskStatus
+from tool_execution import ActionPlan, ExecutionResult
 
 # Configure logging
 logging.basicConfig(
@@ -93,6 +94,24 @@ async def list_agent_templates():
         return {
             "templates": [dict(row) for row in rows]
         }
+
+
+@app.post("/execute-tools", response_model=ExecutionResult)
+async def execute_tools(plan: ActionPlan, user_id: str = "test_user", office_id: str = "test_office"):
+    """
+    Directly execute a set of tools defined in an Action Plan.
+    
+    This endpoint is primarily for:
+    1. Testing tool execution independently of LLM
+    2. executing pre-defined deterministic workflows
+    3. Retrying failed tool steps
+    """
+    logger.info(f"Received tool execution plan: {plan.execution_id} with {len(plan.steps)} steps")
+    
+    orchestrator = get_orchestrator()
+    result = await orchestrator.execute_tool_plan(plan, user_id, office_id)
+    
+    return result
 
 
 if __name__ == "__main__":

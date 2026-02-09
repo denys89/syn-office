@@ -21,6 +21,14 @@ from rate_limiter import (
     get_rate_limiter, get_anomaly_detector, get_circuit_breaker,
     CreditRateLimiter, AnomalyDetector, CircuitBreaker, RateLimitAction
 )
+from tool_execution import (
+    get_execution_orchestrator, 
+    ExecutionOrchestrator,
+    ActionPlan,
+    ExecutionResult,
+    ExecutionContext,
+    PermissionScope
+)
 
 logger = logging.getLogger(__name__)
 
@@ -48,6 +56,15 @@ async def _get_qdrant():
     return _qdrant_client
 
 
+from tool_execution import (
+    get_execution_orchestrator, 
+    ExecutionOrchestrator,
+    ActionPlan,
+    ExecutionResult,
+    ExecutionContext,
+    PermissionScope
+)
+
 class Orchestrator:
     """
     Main orchestrator for agent task execution.
@@ -62,6 +79,11 @@ class Orchestrator:
     - Pre-execution balance checks
     - Credit consumption based on model usage
     - Cost tracking and reporting
+    
+    Integrated with Tool Execution Layer for:
+    - Deterministic tool execution
+    - Sequential and parallel action plans
+    - Secure, sandboxed execution with permission checks
     """
     
     def __init__(self):
@@ -74,6 +96,7 @@ class Orchestrator:
         self.rate_limiter: CreditRateLimiter = get_rate_limiter()
         self.anomaly_detector: AnomalyDetector = get_anomaly_detector()
         self.circuit_breaker: CircuitBreaker = get_circuit_breaker()
+        self.tool_orchestrator: Optional[ExecutionOrchestrator] = None
         self._initialized = False
     
     async def initialize(self) -> None:
@@ -84,12 +107,66 @@ class Orchestrator:
         # Initialize model selector
         await self.model_selector.initialize()
         
+        # Initialize tool execution layer
+        self.tool_orchestrator = await get_execution_orchestrator()
+        
         # Initialize metrics with database pool
         if self.db.pool:
             await self.metrics.initialize(self.db.pool)
         
         self._initialized = True
-        logger.info("Orchestrator initialized with model selection engine and credit system")
+        logger.info("Orchestrator initialized with model selection, credit system, and tool execution layer")
+
+    # ... [existing methods] ...
+
+    async def execute_tool_plan(
+        self, 
+        plan: ActionPlan, 
+        user_id: str, 
+        office_id: str
+    ) -> ExecutionResult:
+        """
+        Execute a tool action plan.
+        
+        Args:
+            plan: The action plan to execute
+            user_id: The ID of the user requesting execution
+            office_id: The office context
+            
+        Returns:
+            ExecutionResult containing outputs and status
+        """
+        await self.initialize()
+        
+        # user_id and office_id validation/loading could happen here
+        # For now, we assume authenticated context passed from API layer
+        
+        # Build execution context
+        # In a real scenario, we would fetch permissions from the DB
+        # For MVP/testing, we might construct a context with ample permissions 
+        # or fetch from a user_permissions table.
+        # Here we'll Mock it or fetch it. 
+        # TODO: integrated permission fetching. 
+        # For now, we'll create a context based on the passed IDs and assume 
+        # the SecurityGateway will validate against specific scopes if we populate them.
+        
+        # Fetch user permissions (Mock implementation for now)
+        # In production: permissions = await self.db.get_user_permissions(user_id)
+        permissions = PermissionScope(
+            user_id=user_id,
+            office_id=office_id,
+            granted_scopes=["*"], # TODO: Replace with actual scope loading
+            oauth_tokens={}, # TODO: Load tokens from secure storage
+        )
+        
+        context = ExecutionContext(
+            user_id=user_id,
+            office_id=office_id,
+            permissions=permissions
+        )
+        
+        return await self.tool_orchestrator.execute_plan(plan, context)
+
     
     async def execute_task(self, request: ExecuteRequest) -> ExecuteResponse:
         """
@@ -419,6 +496,43 @@ class Orchestrator:
         except Exception as e:
             # Log but don't fail - message is already saved
             logger.warning(f"Failed to notify backend: {e}")
+
+
+    async def execute_tool_plan(
+        self, 
+        plan: ActionPlan, 
+        user_id: str, 
+        office_id: str
+    ) -> ExecutionResult:
+        """
+        Execute a tool action plan.
+        
+        Args:
+            plan: The action plan to execute
+            user_id: The ID of the user requesting execution
+            office_id: The office context
+            
+        Returns:
+            ExecutionResult containing outputs and status
+        """
+        # Ensure initialization
+        await self.initialize()
+        
+        # Mock permissions for MVP - in production this comes from DB/Auth
+        permissions = PermissionScope(
+            user_id=user_id,
+            office_id=office_id,
+            granted_scopes=["*"],  # Allow all for MVP testing
+            oauth_tokens={},       # Tokens would be injected here
+        )
+        
+        context = ExecutionContext(
+            user_id=user_id,
+            office_id=office_id,
+            permissions=permissions
+        )
+        
+        return await self.tool_orchestrator.execute_plan(plan, context)
 
 
 # Singleton instance
